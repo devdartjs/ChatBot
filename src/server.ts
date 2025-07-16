@@ -1,39 +1,29 @@
 import { Elysia, t } from "elysia";
+import swagger from "@elysiajs/swagger";
 import { cors } from "@elysiajs/cors";
+import Chatbot from "./lib/chatBotLib";
+import chatOpenAI from "./lib/chatBotLibAI";
+
+Chatbot.addResponses({
+  "what is your name": "I'm Chatbot!",
+  "tell me a joke": () =>
+    "Why don't scientists trust atoms? Because they make up everything!",
+});
 
 const app = new Elysia()
   .use(cors())
+  .use(swagger())
+  .get("/", () => "Hello, That is build to integrate AI chatbot!")
   .post(
     "/chat",
     async ({ body }) => {
       const { message } = body;
 
-      const openaiRes = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              {
-                role: "system",
-                content: "Você é um assistente de chat educado e útil.",
-              },
-              { role: "user", content: message },
-            ],
-            temperature: 0.7,
-            max_tokens: 100,
-          }),
-        }
-      );
+      if (!message || typeof message !== "string") {
+        return { reply: "Please, send a valid message." };
+      }
 
-      const data = await openaiRes.json();
-      const reply =
-        data.choices?.[0]?.message?.content || "Não consegui responder.";
+      const reply = Chatbot.getResponse(message);
 
       return { reply };
     },
@@ -43,8 +33,24 @@ const app = new Elysia()
       }),
     }
   )
+  .post(
+    "/chatAI",
+    async ({ body, set }) => {
+      const { message } = body;
+
+      if (!message || typeof message !== "string") {
+        set.status = 400;
+        return { reply: "Please provide a valid message." };
+      }
+
+      return await chatOpenAI(message);
+    },
+    {
+      body: t.Object({
+        message: t.String(),
+      }),
+    }
+  )
   .listen(3000);
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+export default app;
