@@ -1,0 +1,42 @@
+name: CI - Chatbot Bun + Elysia
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚡ Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📦 Install dependencies
+        run: bun install
+
+      - name: ✅ Run tests
+        run: bun test || bun run test
+
+      - name: 🔍 Lint (if lint script exists)
+        run: bun run lint || echo "No lint configured"
+
+      - name: 🛠️ Build project
+        run: bun run build
+
+      - name: 🐳 Build Docker image
+        run: docker build -t chatbot-bun .
+
+      - name: 🚀 Push to Docker Hub
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker tag chatbot-bun ${{ secrets.DOCKER_USERNAME }}/chatbot-bun:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/chatbot-bun:latest

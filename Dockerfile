@@ -22,6 +22,6 @@ COPY --from=builder /backend/bun.lock ./
 
 RUN bun install --production
 
-EXPOSE 3000
+EXPOSE 3050
 
 CMD ["bun", "run", "dist/server.js"]
