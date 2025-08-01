@@ -1,0 +1,50 @@
+name: CI-CD - Chatbot Bun + Elysia
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚡ Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📦 Install dependencies
+        run: bun install
+
+      - name: ✅ Run tests
+        run: bun test || bun run test
+
+      - name: 🔍 Lint (if lint script exists)
+        run: bun run lint || echo "No lint configured"
+
+      - name: 🛠️ Build project
+        run: bun run build
+
+      - name: 🐳 Build Docker image
+        run: docker build -t chatbot-bun .
+
+      - name: 🚀 Push to Docker Hub
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker tag chatbot-bun ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-bun:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-bun:latest
+
+      - name: 🚀 Deploy to Fly.io
+        if: github.ref == 'refs/heads/main' && success()
+        uses: superfly/flyctl-actions@1.4
+        with:
+          args: "deploy --remote-only"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_CHATBOT_BACKEND }}
