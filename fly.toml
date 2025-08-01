@@ -1,0 +1,31 @@
+# fly.toml app configuration file for app-lingering-night-7063
+
+app = "app-lingering-night-7063"
+primary_region = "gig"  # região GIG = Rio de Janeiro
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+PORT = "3000"
+
+[http_service]
+internal_port = 3000      
+force_https = true         
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 0   
+processes = ["app"]
+
+[[http_service.ports]]
+port = 80
+handlers = ["http"]
+
+[[http_service.ports]]
+port = 443
+handlers = ["tls", "http"]
+
+[[vm]]
+memory = "1gb"
+cpu_kind = "shared"
+cpus = 1
